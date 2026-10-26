@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -21,9 +21,9 @@
     <main>
         <section id="panel-binario" class="panel activo" >
             <h2>Convertir un octeto o una IP a Binario</h2>
-            <form id="bin-entrada" class="formulario">
-                <label for="">Numero (0 - 255) o IP Completa</label>
-                <input type="text"  id="bin-entrada" value="192.168.50.0" autocomplete="off">
+            <form id="form-binario" class="formulario">
+                <label for="bin-entrada">Numero (0 - 255) o IP Completa</label>
+                <input type="text" id="bin-entrada" value="192.168.50.0" autocomplete="off">
                 <button type="submit" >Convertir</button>
             </form>
             <div id="bin-resultado" ></div>
@@ -35,7 +35,7 @@
                 <label>Prefijo o máscara</label>
                 <input type="text"  id="flsm-prefijo" value="/8" autocomplete="off">
                 <label>Red base</label>
-                <input type="text"  id="flsm-red" value="10.0.0.1" autocomplete="off">
+                <input type="text"  id="flsm-red" value="10.0.0.0" autocomplete="off">
                 <label>Calcular por:
                     <select id="flsm-modo">
                         <option value="subredes">Número de Subredes</option>
@@ -64,7 +64,7 @@
                     <div class="vlsm-filas" >
 
                     </div>
-                    <button type="button" id="vlsn-agregar" class="secundario" >Agregar Subred</button>
+                    <button type="button" id="vlsm-agregar" class="secundario" >Agregar Subred</button>
 
                 </div>
                 <button type="submit" >Subnetear</button>
@@ -83,9 +83,12 @@
                 </label>
                 <button type="submit" >Analizar</button>
             </form>
-            <div id="ip-resultdo" ></div>
+            <div id="ip-resultado" ></div>
         </section>
     </main>
+
+      <script src="../js/subneteo.js"></script>
+  <script src="../js/app.js"></script>
     
 </body>
 </html>
