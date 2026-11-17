@@ -1,8 +1,11 @@
 
- // La página solo hace fetch a la API. El navegador manda la cookie solo (misma página, mismo servidor).
+ // La página solo hace fethc a la api. El navegador manda la cookie solo (misma página, mismo servidor).
+// usamos este atajo para encontrar los elementos de la página de la misma forma en todo el archivo.
+// asi, las funciones se enfocan en actualizar la pantalla sin para no repetir búsquedas largas.
 const $ = (id) => document.getElementById(id);
 
-// Función para hacer peticiones al servidor y recibir respuestas.
+// Reunimos aquí las peticiones para que todas las acciones se comuniquen con el servidor de forma parecida.
+// También sirve mostrar respuestas aunque el servidor no devuelva datos en el formato esperado.
 async function llamar(metodo, url, cuerpo) {
     const opciones = {
         method: metodo
@@ -33,8 +36,8 @@ async function llamar(metodo, url, cuerpo) {
         datos: datos
     };
 }
-// Guardamos las respuestas visibles para comprobar
-// qué ocurrió en cada petición.
+// la bitacora deja a la vista lo que respondio el servidor después de cada acción.
+// esto facilita seguir la demostración y distinguir, por ejemplo, entre una sesion valida y un acceso rechazado.
 function agregarBitacora(metodo, url, status, datos) {
     const li = document.createElement('li');
     const codigo = document.createElement('span');
@@ -62,8 +65,8 @@ function agregarBitacora(metodo, url, status, datos) {
     $('bitacora').prepend(li);
 }
 
-// Consultamos al servidor porque la sesión no debe
-// determinarse únicamente desde el navegador.
+// preguntamos al servidor quién inició sesion porque el navegador por sí solo no puede confirmar esa informacion.
+// asi, el mensaje de la pagina refleja el estado real y también permite observar qué cookie puede leer JavaScript.
 async function refrescarEstado() {
     const estado = $('estado');
 
@@ -96,8 +99,8 @@ async function refrescarEstado() {
     }
 }
 
-// Reconstruimos la tabla para evitar que se acumulen
-// filas duplicadas al actualizarla.
+// Esta tabla permite observar las sesiones que conserva el servidor y dónde las está guardando.
+// Es útil para comparar la sesión actual con otras y entender qué pasa al iniciar o cerrar sesión.
 async function refrescarSesiones() {
     const tabla = $('tabla-sesiones');
     tabla.replaceChildren();
@@ -135,6 +138,7 @@ async function refrescarSesiones() {
             return;
         }
 
+        // mostrar cada sesión ayuda a comparar la propia con las de otros navegadores.
         sesiones.forEach((sesion) => {
             const fila = document.createElement('tr');
             const esLaTuya = sesion.esLaTuya ?? sesion.esLaTuta;
@@ -152,6 +156,7 @@ async function refrescarSesiones() {
                     : '(sin fecha)'
             ];
 
+            // Mantener una celda por valor conserva el orden de las columnas de la tabla.
             valores.forEach((valor) => {
                 const celda = document.createElement('td');
                 celda.textContent = String(valor);
@@ -172,14 +177,15 @@ async function refrescarSesiones() {
     }
 }
 
-// Actualizamos ambas tarjetas después de cada acción
-// para que reflejen los datos actuales del servidor.
+// Después de una acción pueden cambiar tanto el estado del usuario como la lista de sesiones.
+// Actualizar ambas partes juntas evita que la página muestre información desactualizada.
 async function refrescarTodo() {
     await refrescarEstado();
     await refrescarSesiones();
 }
 
-// Evitamos recargar la página al iniciar sesión.
+// Procesamos el inicio de sesión aquí para no recargar la página ni perder la bitácora de la demostración.
+// Después mostramos la respuesta del servidor y el estado actualizado de la sesión.
 $('form-login').addEventListener('submit', async (evento) => {
     evento.preventDefault();
 
@@ -205,8 +211,8 @@ $('form-login').addEventListener('submit', async (evento) => {
     }
 });
 
-// Usamos los atributos del HTML para manejar todos
-// los botones de la API con un solo procedimiento.
+// Los botones de la página realizan distintas acciones, pero todas necesitan mostrar su resultado y actualizar el estado.
+// Compartir este manejo evita que cada botón se comporte de manera diferente.
 document.querySelectorAll('[data-url]').forEach((boton) => {
     boton.addEventListener('click', async () => {
         const metodo = boton.dataset.metodo;
@@ -230,17 +236,19 @@ document.querySelectorAll('[data-url]').forEach((boton) => {
     });
 });
 
-// Facilitamos el uso de las cuentas de ejemplo.
+// Las cuentas de esta actividad usan una contraseña fácil de recordar que depende del nombre elegido.
+// Completarla automáticamente ayuda a probar cada cuenta sin confundir sus datos.
 $('usuario').addEventListener('change', () => {
     $('contrasena').value = $('usuario').value + '12345';
 });
 
-// Permitimos actualizar la información sin recargar.
+// Estos botones sirven para volver a consultar el estado o las sesiones cuando se quiera.
+// No recargan la página, así que la bitácora y el resto de la demostración permanecen visibles.
 $('btn-refrescar').addEventListener('click', refrescarTodo);
 $('btn-sesiones').addEventListener('click', refrescarSesiones);
 
-// Cargamos la configuración y el estado inicial.
-// El script está al final del body, así que el HTML ya existe.
+// Al abrir la página, consultamos la configuración y el estado actual para que no dependa de una recarga manual.
+// De esta manera, la demostración comienza mostrando información real desde el primer momento.
 async function iniciar() {
     try {
         const resultado = await llamar('GET', '/api/config');
@@ -256,4 +264,3 @@ async function iniciar() {
 }
 
 iniciar();
-
