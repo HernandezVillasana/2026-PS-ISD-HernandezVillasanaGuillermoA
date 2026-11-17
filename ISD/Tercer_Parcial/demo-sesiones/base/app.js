@@ -42,7 +42,7 @@ function crearApp(config, pool){
       saveUninitialized : false, //no crea la sesion ni la cookie
       rolling : config.rolling,
       cookie : {
-        maxAge: config.maxAge || 1000*60*60*24,
+        maxAge: config.maxAgeMs || 1000 * 60 * 60 * 24,
         httpOnly: config.httpOnly,
         sameSite : config.sameSite,
         secure : false //activar el https
@@ -53,20 +53,10 @@ function crearApp(config, pool){
   //conocer el id de la sesión
   const idCorto = (id) => (id ? `${id.slice(0, 8)}...` : null);
 
-  //en el uso de middleware como existe el intercambio de la sesion para tener un seguimiento del usuario, rol, privilegio, etc, se utiliza el atributo roling para poder extener su uso
-
-  function requiereSesion(req, res, next){
-    return pendiente(1)(req, res, next);
-  }
-
-  function requiereRol(rol){
-    return pendiente(3);
-  }
-
   //cuando estemos utilizando un middleware verificar la sesión actividad a partir ya sea de la consulta al servidor o la cookie
   function vencida(sesion){
     const desde = config.rolling ? sesion.ultimoUso : sesion.creada;
-    return Date.now() - desde > config.maxAge;
+    return Date.now() - desde > config.maxAgeMs;
   }
 
   //tenemos que identicar quien entro
@@ -116,7 +106,7 @@ function crearApp(config, pool){
 
       //guardo la sesion
       const guardar = () =>{
-        req.session.datos = datos;
+        req.session.usuario = datos;
         req.session.visitas = visitas;
         req.session.creada = Date.now();
         req.session.ultimoUso = Date.now();
@@ -169,9 +159,9 @@ function crearApp(config, pool){
   app.get('/api/diagnostico/sesiones', async(req, res, next)=>{
     try{
       const sesiones = await todasLasSesiones(almacen);
-      const lista = Object.entries(sesiones || {}).map(([id], s) =>({
+      const lista = Object.entries(sesiones || {}).map(([id, s]) =>({
         sesion : idCorto(id),
-        esLaTuta : id === req.sessionID,
+        esLaTuya : id === req.sessionID,
         usuario : s.usuario ? s.usuario.usuario : '(sin iniciar sesion)',
         visitas: s.visitas || 0,
         expira: s.cookie && s.cookie.expires,
