@@ -5,6 +5,12 @@ const express = require('express');
 const session = require('express-session');
 const MySQLStore = require('express-mysql-session')(session);
 const { crearModeloUsuarios } = require('./modelos/usuarios.modelo');
+const crypto = require('crypto');
+const jwt = require('jsonwebtoken');
+const {crearModeloUsuarios} = require('./modelos/usuarios.modelo');
+const { config } = require('dotenv');
+const {crearModeloTokens} = requite('./modelos/tokens.modelo');
+
 
 const NOMBRE_COOKIE = 'connect.sid';
 
@@ -42,7 +48,7 @@ function crearApp(config, pool){
       saveUninitialized : false, //no crea la sesion ni la cookie
       rolling : config.rolling,
       cookie : {
-        maxAge: config.maxAgeMs || 1000 * 60 * 60 * 24,
+        maxAge: config.maxAge || 1000*60*60*24,
         httpOnly: config.httpOnly,
         sameSite : config.sameSite,
         secure : false //activar el https
@@ -53,10 +59,20 @@ function crearApp(config, pool){
   //conocer el id de la sesión
   const idCorto = (id) => (id ? `${id.slice(0, 8)}...` : null);
 
+  //en el uso de middleware como existe el intercambio de la sesion para tener un seguimiento del usuario, rol, privilegio, etc, se utiliza el atributo roling para poder extener su uso
+
+  function requiereSesion(req, res, next){
+    return pendiente(1)(req, res, next);
+  }
+
+  function requiereRol(rol){
+    return pendiente(3);
+  }
+
   //cuando estemos utilizando un middleware verificar la sesión actividad a partir ya sea de la consulta al servidor o la cookie
   function vencida(sesion){
     const desde = config.rolling ? sesion.ultimoUso : sesion.creada;
-    return Date.now() - desde > config.maxAgeMs;
+    return Date.now() - desde > config.maxAge;
   }
 
   //tenemos que identicar quien entro
@@ -106,7 +122,7 @@ function crearApp(config, pool){
 
       //guardo la sesion
       const guardar = () =>{
-        req.session.usuario = datos;
+        req.session.datos = datos;
         req.session.visitas = visitas;
         req.session.creada = Date.now();
         req.session.ultimoUso = Date.now();
@@ -159,9 +175,9 @@ function crearApp(config, pool){
   app.get('/api/diagnostico/sesiones', async(req, res, next)=>{
     try{
       const sesiones = await todasLasSesiones(almacen);
-      const lista = Object.entries(sesiones || {}).map(([id, s]) =>({
+      const lista = Object.entries(sesiones || {}).map(([id], s) =>({
         sesion : idCorto(id),
-        esLaTuya : id === req.sessionID,
+        esLaTuta : id === req.sessionID,
         usuario : s.usuario ? s.usuario.usuario : '(sin iniciar sesion)',
         visitas: s.visitas || 0,
         expira: s.cookie && s.cookie.expires,
@@ -183,6 +199,50 @@ function crearApp(config, pool){
   });
 
   return app;
+}
+
+
+//vamos a continuar con el jwt
+const SECRETO_JWT = config.jwtSecreto || process.env.JWT_SECRET || 'secreto-jwt-solo-para-la-demo';
+
+//vamos a crear el token de un usuario, con datos, (payload) + vencimiento + id unico y va a estar firmado con HS256 
+function firmarToken(usuario){
+  return jwt.sign(
+    {sub: String(usuario.id), usuario : usuario.usuario, nombre: usuario.nombre, rol: usuario.rol}, SECRETO_JWT, {algorithm: 'HS256', expiresIn: config.jwtExpiraSeg, jwtid: crypto.randomUUID()}
+  )
+
+  //para poder atender la petición con el middleware
+  async function requiereJWT(req, res, next) {
+    const encabezado = req.header.authorization || '';
+    if(!encabezado.startsWith('Bearer ')){
+      return res.status(401).json({error: '401. Falta el token para estar Autorizado'});
+    }
+    const token = encabezado.slice('Bearer'.length);
+
+    let datos;
+    try{
+      //debemos aceptar los datos de acuerdo al algoritmo
+      datos = jwt.verify(token, SECRETO_JWT, {algorithms: ['HS256']});
+    }catch(error){
+      if(error.name === 'TokenExpiredError'){
+        return res.status(401).json({error: '401 Token expirado por favor renuevalo o vuelve iniciar'});
+      } 
+      return res.status(401).json({error: '401 Token invalido'})
+    }
+    try{
+      if(config.jwtRevocar && (await crearModeloTokens.estaRevocado(datos.jti))){
+        return res.status(401).json({error: '401. Token revocado ya se cerro la sesión'})
+      }
+    }catch(error){
+      return next(error);
+    }
+
+    req.jwt = datos;
+    next();
+    
+  }
+
+  
 }
 
 module.exports = {crearApp, NOMBRE_COOKIE};
