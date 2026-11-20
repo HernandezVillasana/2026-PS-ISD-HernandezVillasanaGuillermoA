@@ -18,6 +18,11 @@
       <p id="estado" class="estado sin-sesion">Sin sesión</p>
       <p class="detalle">Lo que el JavaScript de esta página puede leer con <code>document.cookie</code>:</p>
       <pre id="cookie-js">(vacío)</pre>
+      <p id="jwt-estado" class="estado sin-sesion">JWT: sin token</p>
+      <p class="detalle">Header decodificado:</p>
+      <pre id="jwt-header">(sin token)</pre>
+      <p class="detalle">Payload decodificado:</p>
+      <pre id="jwt-claims">(sin token)</pre>
       <button id="btn-refrescar" type="button">Volver a preguntar</button>
     </section>
 
@@ -35,6 +40,7 @@
           <input id="contrasena" type="password" value="ana12345" autocomplete="off">
         </label>
         <button type="submit">Entrar</button>
+        <button id="btn-jwt-login" type="button">Entrar con JWT</button>
       </form>
       <p class="detalle">Los usuarios están en la tabla <code>usuarios</code> de MySQL. Contraseñas: <code>ana12345</code>, <code>luis12345</code> y <code>admin12345</code>.</p>
     </section>
@@ -46,6 +52,10 @@
         <button type="button" data-metodo="GET" data-url="/api/perfil">GET /api/perfil</button>
         <button type="button" data-metodo="GET" data-url="/api/admin/reporte">GET /api/admin/reporte</button>
         <button type="button" data-metodo="POST" data-url="/api/logout" class="peligro">POST /api/logout</button>
+        <button type="button" data-jwt-metodo="GET" data-jwt-url="/api/jwt/perfil">Perfil JWT</button>
+        <button type="button" data-jwt-metodo="GET" data-jwt-url="/api/jwt/reporte">Reporte admin JWT</button>
+        <button type="button" data-jwt-metodo="POST" data-jwt-url="/api/jwt/refresh">Renovar JWT</button>
+        <button type="button" data-jwt-metodo="POST" data-jwt-url="/api/jwt/logout" class="peligro">Cerrar JWT</button>
       </div>
       <ol id="bitacora" class="bitacora" reversed></ol>
     </section>
@@ -59,10 +69,19 @@
         <tbody id="tabla-sesiones"><tr><td colspan="4">(sin sesiones)</td></tr></tbody>
       </table>
       <button id="btn-sesiones" type="button">Actualizar tabla</button>
+      <p id="lista-negra" class="detalle">Lista negra (tokens_revocados): …</p>
     </section>
 
     <section class="tarjeta">
-      <h2>5 · Configuración actual (<code>config.js</code>)</h2>
+      <h2>5 · Lo que puede leer el JavaScript de esta página</h2>
+      <p class="detalle">Si alguien lograra inyectar un script (XSS), esto es lo que podría robar:</p>
+      <button id="btn-borrar-jwt" type="button" class="peligro">Borrar token (solo navegador)</button>
+      <p class="detalle">Token JWT (Bearer):</p>
+      <pre id="jwt-token">(sin token)</pre>
+    </section>
+
+    <section class="tarjeta">
+      <h2>6 · Configuración actual (<code>config.js</code>)</h2>
       <pre id="config">…</pre>
     </section>
   </main>

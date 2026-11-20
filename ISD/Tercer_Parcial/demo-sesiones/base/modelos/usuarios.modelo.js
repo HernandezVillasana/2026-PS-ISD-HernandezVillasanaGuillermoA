@@ -14,7 +14,7 @@ function crearModeloUsuarios(pool) {
     }
 
     const [filas] = await pool.query(
-      'SELECT usuario, nombre, rol, contrasena_hash FROM usuarios WHERE usuario = ? LIMIT 1',
+      'SELECT id, usuario, nombre, rol, contrasena_hash FROM usuarios WHERE usuario = ? LIMIT 1',
       [usuario]
     );
     const registro = filas[0];
@@ -24,6 +24,7 @@ function crearModeloUsuarios(pool) {
     }
 
     return {
+      id: registro.id,
       usuario: registro.usuario,
       nombre: registro.nombre,
       rol: registro.rol

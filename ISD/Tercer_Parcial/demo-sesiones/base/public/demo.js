@@ -6,17 +6,20 @@ const $ = (id) => document.getElementById(id);
 
 // Reunimos aquí las peticiones para que todas las acciones se comuniquen con el servidor de forma parecida.
 // También sirve mostrar respuestas aunque el servidor no devuelva datos en el formato esperado.
-async function llamar(metodo, url, cuerpo) {
+async function llamar(metodo, url, cuerpo, encabezados = {}) {
     const opciones = {
         method: metodo
     };
 
     if (cuerpo !== undefined) {
         opciones.headers = {
+            ...encabezados,
             'Content-Type': 'application/json'
         };
 
         opciones.body = JSON.stringify(cuerpo);
+    } else if (Object.keys(encabezados).length > 0) {
+        opciones.headers = encabezados;
     }
 
     const respuesta = await fetch(url, opciones);
@@ -119,12 +122,14 @@ async function refrescarSesiones() {
 
         const datos = resultado.datos;
 
+        const sesiones = Array.isArray(datos.sesiones) ? datos.sesiones : [];
         $('donde').textContent =
             datos.almacen === 'mysql'
-                ? 'En MySQL, tabla sessions'
-                : 'En la memoria del servidor';
-
-        const sesiones = Array.isArray(datos.sesiones) ? datos.sesiones : [];
+                ? `Filas en la tabla sessions: ${sesiones.length}. Con JWT el servidor no crea ninguna nueva.`
+                : `Sesiones en memoria: ${sesiones.length}. Con JWT el servidor no crea ninguna nueva.`;
+        $('lista-negra').textContent = datos.listaNegraActiva
+            ? `Lista negra (tokens_revocados): ${datos.tokensRevocados} token(s)`
+            : 'Lista negra de JWT desactivada';
 
         if (sesiones.length === 0) {
             const fila = document.createElement('tr');
@@ -246,6 +251,86 @@ $('usuario').addEventListener('change', () => {
 // No recargan la página, así que la bitácora y el resto de la demostración permanecen visibles.
 $('btn-refrescar').addEventListener('click', refrescarTodo);
 $('btn-sesiones').addEventListener('click', refrescarSesiones);
+
+let tokenJWT = null;
+
+function mostrarJWT() {
+    const estado = $('jwt-estado');
+    if (!tokenJWT) {
+        estado.className = 'estado sin-sesion';
+        estado.textContent = 'JWT: sin token';
+        $('jwt-token').textContent = '(sin token)';
+        $('jwt-header').textContent = '(sin token)';
+        $('jwt-claims').textContent = '(sin token)';
+        return;
+    }
+
+    try {
+        const partes = tokenJWT.split('.');
+        const decodificar = (parte) => {
+            const base64 = parte.replace(/-/g, '+').replace(/_/g, '/');
+            const bytes = Uint8Array.from(atob(base64), (caracter) => caracter.charCodeAt(0));
+            return JSON.parse(new TextDecoder().decode(bytes));
+        };
+        const header = decodificar(partes[0]);
+        const claims = decodificar(partes[1]);
+        const quedan = Math.max(0, claims.exp - Math.floor(Date.now() / 1000));
+        estado.className = `estado ${quedan ? 'con-sesion' : 'sin-sesion'}`;
+        estado.textContent = `JWT: ${claims.nombre} (${claims.rol}) · expira en ${quedan}s`;
+        $('jwt-token').textContent = tokenJWT;
+        $('jwt-header').textContent = JSON.stringify(header, null, 2);
+        $('jwt-claims').textContent = JSON.stringify(claims, null, 2);
+    } catch (error) {
+        estado.className = 'estado sin-sesion';
+        estado.textContent = 'JWT inválido';
+        $('jwt-token').textContent = '(token inválido)';
+        $('jwt-header').textContent = '(no se pudo leer el token)';
+        $('jwt-claims').textContent = '(no se pudo leer el token)';
+        console.error('No se pudieron leer los datos del JWT:', error);
+    }
+}
+
+$('btn-jwt-login').addEventListener('click', async () => {
+    const cuerpo = { usuario: $('usuario').value, contrasena: $('contrasena').value };
+    try {
+        const resultado = await llamar('POST', '/api/jwt/login', cuerpo);
+        if (resultado.status === 200) tokenJWT = resultado.datos.token;
+        const datos = resultado.datos && { ...resultado.datos, token: '[guardado en memoria]' };
+        agregarBitacora('POST', '/api/jwt/login', resultado.status, datos);
+        mostrarJWT();
+        await refrescarSesiones();
+    } catch (error) {
+        agregarBitacora('POST', '/api/jwt/login', 0, { error: error.message });
+        console.error('Error al iniciar sesión con JWT:', error);
+    }
+});
+
+$('btn-borrar-jwt').addEventListener('click', () => {
+    tokenJWT = null;
+    mostrarJWT();
+});
+
+document.querySelectorAll('[data-jwt-url]').forEach((boton) => {
+    boton.addEventListener('click', async () => {
+        const metodo = boton.dataset.jwtMetodo;
+        const url = boton.dataset.jwtUrl;
+        const encabezados = tokenJWT ? { Authorization: `Bearer ${tokenJWT}` } : {};
+        try {
+            const resultado = await llamar(metodo, url, undefined, encabezados);
+            if (url === '/api/jwt/refresh' && resultado.status === 200) {
+                tokenJWT = resultado.datos.token;
+            } else if (url === '/api/jwt/logout' && resultado.status === 200) {
+                tokenJWT = null;
+            }
+            agregarBitacora(metodo, url, resultado.status, resultado.datos);
+            mostrarJWT();
+            await refrescarSesiones();
+        } catch (error) {
+            agregarBitacora(metodo, url, 0, { error: error.message });
+            console.error('Error en la ruta JWT:', error);
+        }
+    });
+});
 
 // Al abrir la página, consultamos la configuración y el estado actual para que no dependa de una recarga manual.
 // De esta manera, la demostración comienza mostrando información real desde el primer momento.

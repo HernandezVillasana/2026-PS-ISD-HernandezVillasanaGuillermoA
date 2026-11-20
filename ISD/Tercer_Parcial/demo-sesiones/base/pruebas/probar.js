@@ -6,7 +6,7 @@ const { crearPool } = require('../db');
 const { crearBaseDeDatos } = require('../bd/crear-bd');
 const configBase = require('../config');
 
-const BD_PRUEBAS = 'demo_sesiones_pruebas';
+const BD_PRUEBAS = process.env.DB_PRUEBAS || 'demo_sesiones_pruebas';
 let pool;
 
 let total = 0;
@@ -38,8 +38,8 @@ function navegador(url) {
   const nav = {
     cookie: null,
     ultimoSetCookie: null,
-    async pedir(metodo, ruta, cuerpo) {
-      const headers = {};
+    async pedir(metodo, ruta, cuerpo, encabezados = {}) {
+      const headers = { ...encabezados };
       if (nav.cookie) headers.Cookie = nav.cookie;
       if (cuerpo) headers['Content-Type'] = 'application/json';
       const r = await fetch(url + ruta, { method: metodo, headers, body: cuerpo ? JSON.stringify(cuerpo) : undefined });
@@ -145,6 +145,50 @@ async function filasDeSesion(usuario) {
     await nav.pedir('POST', '/api/login', { usuario: 'admin', contrasena: 'admin12345' });
     const r = await nav.pedir('GET', '/api/admin/reporte');
     return r.status === 200;
+  });
+
+  await prueba('JWT: login y perfil usan el Bearer token', async () => {
+    const nav = navegador(url);
+    const login = await nav.pedir('POST', '/api/jwt/login', {
+      usuario: 'ana',
+      contrasena: 'ana12345',
+    });
+    const perfil = await nav.pedir('GET', '/api/jwt/perfil', undefined, {
+      Authorization: `Bearer ${login.datos.token}`,
+    });
+    return login.status === 200 &&
+      perfil.status === 200 &&
+      perfil.datos.usuario === 'ana' &&
+      perfil.datos.rol === 'alumno';
+  });
+
+  await prueba('JWT: el rol protege el reporte de administrador', async () => {
+    const nav = navegador(url);
+    const login = await nav.pedir('POST', '/api/jwt/login', {
+      usuario: 'ana',
+      contrasena: 'ana12345',
+    });
+    const r = await nav.pedir('GET', '/api/jwt/reporte', undefined, {
+      Authorization: `Bearer ${login.datos.token}`,
+    });
+    return r.status === 403;
+  });
+
+  await prueba('JWT: logout revoca el token', async () => {
+    const nav = navegador(url);
+    const login = await nav.pedir('POST', '/api/jwt/login', {
+      usuario: 'ana',
+      contrasena: 'ana12345',
+    });
+    const encabezados = { Authorization: `Bearer ${login.datos.token}` };
+    const logout = await nav.pedir('POST', '/api/jwt/logout', undefined, encabezados);
+    const perfil = await nav.pedir('GET', '/api/jwt/perfil', undefined, encabezados);
+    const diagnostico = await nav.pedir('GET', '/api/diagnostico/sesiones');
+    return logout.status === 200 &&
+      logout.datos.revocado &&
+      perfil.status === 401 &&
+      diagnostico.datos.listaNegraActiva &&
+      diagnostico.datos.tokensRevocados >= 1;
   });
 
   await prueba('Secuestro: otro navegador con la cookie copiada entra sin contraseña', async () => {

@@ -68,13 +68,13 @@ que programemos va quitando un 501.
 
 | Archivo | Qué es |
 |---|---|
-| ✏️ `app.js` | El servidor: la sesión, los middlewares `requiereSesion` y `requiereRol`, y las rutas de login y logout. Lo marcado con `(en clase)` lo programamos juntos |
+| ✏️ `app.js` | El servidor: las rutas de sesión y JWT, autenticación y permisos |
 | ✏️ `modelos/usuarios.modelo.js` | La función `verificar`: busca al usuario en la tabla `usuarios` y compara la contraseña (paso 2) |
 | `config.js` | Las opciones de la sesión, incluido **dónde** se guardan (`almacen`). Las vas a cambiar en los pasos 4, 5 y 7 |
 | `db.js`, `.env` | La conexión a MySQL (ya hecha) |
 | `bd/demo_sesiones.sql` | La base completa: tablas `usuarios` y `sessions` (`npm run bd` carga este mismo archivo) |
 | `public/` | El frontend (HTML, CSS y JavaScript con `fetch`), ya hecho |
-| `pruebas/probar.js` | Pruebas automáticas: al terminar la clase, `npm run probar` debe dar 21 de 21 |
+| `pruebas/probar.js` | Pruebas automáticas: `npm run probar` valida sesiones y rutas JWT |
 
 > Cada vez que cambies un archivo del servidor (`app.js`, `modelos/`, `config.js`): **Ctrl+C** en la terminal y otra
 > vez `npm start`. Luego recarga la página.
@@ -276,7 +276,7 @@ programamos en el paso 2 (conserva el mismo id) y después lo corregimos.
 npm run probar
 ```
 
-Debe decir `21 de 21 pruebas pasaron.`. Las pruebas usan su propia base (`demo_sesiones_pruebas`) y no tocan tus datos.
+Debe decir `24 de 24 pruebas pasaron.`. Las pruebas usan su propia base (`demo_sesiones_pruebas`) y no tocan tus datos.
 Si alguna falla, el nombre de la prueba dice qué paso revisar.
 
 ## Para tu matriz de riesgos

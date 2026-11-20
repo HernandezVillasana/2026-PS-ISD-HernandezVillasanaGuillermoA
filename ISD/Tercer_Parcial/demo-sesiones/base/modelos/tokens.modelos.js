@@ -4,13 +4,16 @@ function crearModeloTokens(pool){
     //vamos anotar un token como revocado, 
     async function revocar(jti, usuario, exp) {
         await pool.query(
-            'INSERT IGNORE INTO tokens_revocados (jti, usuario, expira) VALUES (?,?, FROM_UNIXTIME(?))', [jti, usuario, exp]
+            'INSERT IGNORE INTO tokens_revocados (jti, usuario, expira) VALUES (?, ?, FROM_UNIXTIME(?))', [jti, usuario, exp]
         );
     }
 
     //pregunto este jwt esta en la lista?
     async function estaRevocado(jti) {
-        const [filas] = await pool.query('SELECT 1 FROM tokens_recovados WHERE jti = ?') [String(jti || '')];
+        const [filas] = await pool.query(
+            'SELECT 1 FROM tokens_revocados WHERE jti = ? LIMIT 1',
+            [String(jti || '')]
+        );
         return filas.length > 0;
     }
 
